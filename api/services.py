@@ -1,5 +1,6 @@
 # core_project/api/services.py
 import ollama
+from ollama import ResponseError
 from .schemas import LandRecord
 from pydantic import ValidationError
 import logging
@@ -21,7 +22,10 @@ def extract_deed_data(deed_text: str, model_name: str = 'llama3.1') -> dict:
         response = ollama.chat(
             model=model_name,
             messages=[
-                {'role': 'system', 'content': 'You are a real estate expert. Extract data precisely and return a JSON object strictly following the provided schema.'},
+                {'role': 'system', 'content': (
+                    "'You are a real estate legal expert. Extract data precisely from the land record provided. Return a JSON object strictly following the provided schema."
+
+                )},
                 {'role': 'user', 'content': deed_text},
             ],
             format=schema,
@@ -39,10 +43,11 @@ def extract_deed_data(deed_text: str, model_name: str = 'llama3.1') -> dict:
         logger.error(f"Pydantic Validation Error: {e.errors()}")
         return {"error": "Structured data validation failed", "details": e.errors()}
         
-    except ollama.OllamaAPIError as e:
+    except ollama.ResponseError as e:
         logger.error(f"Ollama API Error: {e}")
         return {"error": "Ollama API error. Is Ollama running and model pulled?", "details": str(e)}
         
     except Exception as e:
         logger.error(f"Unexpected Error: {e}")
         return {"error": "An unexpected server error occurred", "details": str(e)}
+    
