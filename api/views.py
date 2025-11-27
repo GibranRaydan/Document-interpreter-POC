@@ -1,31 +1,41 @@
 # core_project/api/views.py
+from api.serializers import DocumentExtractionRequestSerializer
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .services import extract_deed_data
+from .services import extract_document_data
+import logging
 
-class DeedExtractionView(APIView):
+logger = logging.getLogger(__name__)
+
+
+class DocumentDataExtractionView(APIView):
     """
-    Receives raw deed text and uses Ollama to return structured extracted data.
+    Receives raw text and uses Ollama to return structured extracted data for land records.
     """
+
     def post(self, request, *args, **kwargs):
-        # 1. Get the text input from the request body
-        deed_text = request.data.get('text')
-        model = request.data.get('model', 'llama3.1') # Default model
+        serializer = DocumentExtractionRequestSerializer(data=request.data)
 
-        if not deed_text:
+        if not serializer.is_valid():
             return Response(
-                {"error": "Missing 'text' field in the request body."},
+                {"errors": serializer.errors},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # 2. Call the Ollama service
-        result = extract_deed_data(deed_text, model_name=model)
-        
-        # 3. Return the result
-        if "error" in result:
-            # Handle server/Ollama errors
-            return Response(result, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
-        # Success: Return the structured data
+        deed_text = serializer.validated_data["text"]
+        model = serializer.validated_data["model"]
+
+        try:
+            result = extract_document_data(deed_text, model_name=model)
+        except Exception as e:
+            logger.exception("Error extracting document data with Ollama.")
+            return Response(
+                {"error": "Internal processing error.", "details": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+        if isinstance(result, dict) and result.get("error"):
+            return Response(result, status=status.HTTP_502_BAD_GATEWAY)
+
         return Response(result, status=status.HTTP_200_OK)

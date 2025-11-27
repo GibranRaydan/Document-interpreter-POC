@@ -1,8 +1,7 @@
 # core_project/api/urls.py
 from django.urls import path
-from .views import DeedExtractionView
+from .views import DocumentDataExtractionView
 
 urlpatterns = [
-    # Map POST requests to the DeedExtractionView
-    path('extract-deed/', DeedExtractionView.as_view(), name='extract_deed'),
+    path('extract-deed/', DocumentDataExtractionView.as_view(), name='extract_ddocument_data'),
 ]
