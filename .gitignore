@@ -1,0 +1,26 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+env/
+.venv/
+
+# Logs and Database
+*.log
+*.sqlite3
+db.sqlite3
+media/  # User-uploaded files
+
+# Django specific
+*.pot
+*.mo
+
+# IDE specific (Optional: for VS Code, PyCharm, etc.)
+.vscode/
+.idea/
+
+# Secrets (Crucial: Prevents uploading sensitive keys)
+.env
