@@ -6,6 +6,14 @@ from pydantic import ValidationError
 import logging
 import json
 
+
+# ocr services
+import pytesseract
+from pdf2image import convert_from_bytes
+from PIL import Image
+import logging
+
+
 logger = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = (
@@ -74,3 +82,23 @@ def extract_document_data(document_text: str, model_name: str) -> dict:
             "error": "Unexpected server error occurred.",
             "details": str(e)
         }
+
+
+
+
+
+def extract_text_from_pdf(pdf_bytes: bytes) -> str:
+    """
+    Converts a PDF into images and extracts text using Tesseract OCR.
+    """
+    images = convert_from_bytes(pdf_bytes, dpi=300)
+
+    full_text = []
+    for i, image in enumerate(images):
+        try:
+            text = pytesseract.image_to_string(image, lang="eng")
+            full_text.append(text)
+        except Exception:
+            logger.exception(f"OCR failed on page {i}")
+
+    return "\n".join(full_text)
