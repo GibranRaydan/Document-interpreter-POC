@@ -4,11 +4,15 @@ from typing import List, Optional, Literal
 
 class Party(BaseModel):
 
-    name: str = Field(..., description="name of the people and entities involved in the document, if its a entity like a company this will be the complete name, if its a person, this is the first name of that person.")
-    givenname: Optional[str] = Field(...,
+    name: str = Field(..., description="name of the people and entities involved in the document,"
+                                        "if its a entity like a company this will be the complete name,"
+                                        "if its a person, this is the first name of that person." \
+                                        "return just the exact value of the name")
+    givenname: Optional[str] = Field(None,
                                      description="If it is the surname/givenname of a person " \
                                      "If 'type' is 'I' (Individual), return the person's **Given Name(s)/First Name** (e.g., ." \
-                                     "If 'type' is 'F' (Entity/Company), this field **MUST be None**.")
+                                     "If 'type' is 'F' (Entity/Company), this field **MUST be None**." \
+                                     "return just the exact value of the name")
     
     role: Literal['Grantor', 'Grantee']  = Field(..., description="Role of the people involved in the document: 'Grantor' the seller or 'Grantee' the buyer")
     type: Literal['F', 'I'] = Field(..., description="If this party is a person or individual, it must return 'I'; if it is an entity and/or company, it must return F'.")
