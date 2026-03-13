@@ -1,0 +1,31 @@
+services:
+
+  db:
+    image: postgres:17.4-alpine
+    restart: no
+    container_name: courtney-db
+    env_file: ./core_project/.env
+    volumes:
+      - ./data/db:/var/lib/postgresql/data
+    ports:
+      - 5432:5432
+
+  backend:
+    image: courtney-api
+    build:
+      context: .
+      dockerfile: dockerfile
+    restart: no
+    container_name: courtney-api
+    env_file: ./core_project/.env
+    # command:  python manage.py runserver 0.0.0.0:8000
+    command: uvicorn core_project.asgi:application --reload --host 0.0.0.0 --port 8000
+    # --workers 4 --timeout-keep-alive 300 # Command production
+    volumes:
+      - ./:/srv/www/api
+    ports:
+      - 8000:8000
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - db

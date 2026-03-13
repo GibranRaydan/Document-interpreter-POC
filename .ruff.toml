@@ -1,0 +1,72 @@
+# Supported Python version
+target-version = "py313"
+
+# Line length (flexible, 191 instead of 88)
+line-length = 191
+
+# Source directories for first-party imports
+# Since .ruff.toml is inside api/, src should be ["."] or empty
+src = ["."]
+
+# Exclude common directories
+exclude = [
+    ".git",
+    ".venv",
+    "venv",
+    "__pycache__",
+    "migrations",
+    ".mypy_cache",
+    ".ruff_cache",
+    "media",
+    "staticfiles",
+]
+
+[lint]
+# Selected rules (equivalent to autoflake, isort, black, pydocstyle, pyflakes)
+select = [
+    "F",      # Pyflakes (logic errors, unused imports - like autoflake)
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "I",      # isort (import sorting)
+    "UP",     # pyupgrade (modernize Python syntax)
+    "B",      # flake8-bugbear (common bugs)
+    "C4",     # flake8-comprehensions
+    "RUF",    # Ruff-specific rules
+    "PERF",   # Performance rules
+]
+
+# Ignored rules for Django/DRF flexibility
+ignore = [
+    "E501",   # Line too long (formatter handles this)
+    "E731",   # Do not assign lambda to variable (common in Django admin)
+    "B904",   # raise without from (not always necessary)
+    "RUF012", # Mutable class attributes (common in Django models)
+    "E402",   # Module level import not at top of file (common in Django settings)
+    "F401",   # Unused imports (sometimes needed in __init__.py for Django apps)
+    "B008",   # Do not perform function calls in argument defaults (common in Django)
+    "E722",   # Do not use bare except (sometimes necessary in Django)
+    "PERF401", # Use a list instead of unnecessarily materializing a generator (false positives)
+    "B006",   # Do not use mutable data structures for argument defaults (Django uses this pattern)
+    "W191",   # Indentation contains tabs (formatter handles this)
+]
+
+# Allow safe automatic fixes
+fixable = ["ALL"]
+unfixable = []
+
+[lint.isort]
+# isort configuration for Django/DRF
+combine-as-imports = true
+force-single-line = false
+lines-after-imports = 2
+
+[lint.pydocstyle]
+# Docstring convention (google is more flexible than numpy)
+convention = "google"
+
+[format]
+# Formatter configuration (equivalent to black)
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"

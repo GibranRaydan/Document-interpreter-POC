@@ -12,6 +12,12 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 
+from environs import env
+
+
+# read .env file, if it exists
+env.read_env()
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -38,18 +44,24 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
-    'api',
+    'corsheaders',
+    'django_json_widget',
+    # 'api',
+    'agents',
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+CORS_ALLOW_ALL_ORIGINS = True
 
 ROOT_URLCONF = 'core_project.urls'
 
@@ -75,9 +87,13 @@ WSGI_APPLICATION = 'core_project.wsgi.application'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": env.str("POSTGRES_DB", "mydatabase"),
+        "USER": env.str("POSTGRES_USER", "mydatabaseuser"),
+        "PASSWORD": env.str("POSTGRES_PASSWORD", "mypassword"),
+        "HOST": env.str("DB_HOST", "127.0.0.1"),
+        "PORT": env.int("DB_PORT", 5432),
     }
 }
 
@@ -116,9 +132,20 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
+STATIC_ROOT = BASE_DIR / "staticfiles"
 STATIC_URL = 'static/'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# --- Media files ---
+MEDIA_ROOT = BASE_DIR / "media"
+MEDIA_URL = "/media/"
+
+# --- Ollama agent settings ---
+OLLAMA_BASE_URL = env("OLLAMA_BASE_URL", "http://localhost:11434")
+OLLAMA_VISION_MODEL = env("OLLAMA_VISION_MODEL", "minicpm-v")
+OLLAMA_TEXT_MODEL = env("OLLAMA_TEXT_MODEL", "llama3.1")
+OLLAMA_TIMEOUT = int(env("OLLAMA_TIMEOUT", "120"))
