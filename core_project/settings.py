@@ -47,7 +47,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'django_json_widget',
     # 'api',
-    'agents',
+    'courtney',
 ]
 
 MIDDLEWARE = [
