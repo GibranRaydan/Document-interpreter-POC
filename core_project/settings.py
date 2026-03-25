@@ -149,3 +149,8 @@ OLLAMA_BASE_URL = env("OLLAMA_BASE_URL", "http://localhost:11434")
 OLLAMA_VISION_MODEL = env("OLLAMA_VISION_MODEL", "minicpm-v")
 OLLAMA_TEXT_MODEL = env("OLLAMA_TEXT_MODEL", "llama3.1")
 OLLAMA_TIMEOUT = int(env("OLLAMA_TIMEOUT", "120"))
+
+# --- Langfuse observability ---
+LANGFUSE_SECRET_KEY = env("LANGFUSE_SECRET_KEY", "")
+LANGFUSE_PUBLIC_KEY = env("LANGFUSE_PUBLIC_KEY", "")
+LANGFUSE_BASE_URL = env("LANGFUSE_BASE_URL", "http://localhost:3000")

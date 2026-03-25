@@ -60,6 +60,19 @@ class DocumentSelectProcessView(APIView):
         return Response({"land_record_id": land_record.pk}, status=200)
 
 
+class DocumentProcessDeleteView(APIView):
+    def delete(self, request, slug, process_slug):
+        document = get_object_or_404(Document, slug=slug)
+        process = get_object_or_404(DocumentProcess, slug=process_slug, document=document)
+        if process.is_selected:
+            return Response(
+                {"detail": "Cannot delete a selected process. Deselect it first."},
+                status=400,
+            )
+        process.delete()
+        return Response(status=204)
+
+
 class DocumentProcessStreamView(View):
     async def get(self, request, slug):
         document = await Document.objects.aget(slug=slug)

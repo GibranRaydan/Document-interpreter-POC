@@ -7,6 +7,8 @@ from typing import Any
 import httpx
 from django.conf import settings
 
+from courtney.agents.abstract.langfuse_client import start_generation
+
 logger = logging.getLogger(__name__)
 
 MAX_RETRIES = 3
@@ -54,6 +56,25 @@ async def call_llm(
             content = data["message"]["content"]
             tokens_input = data.get("prompt_eval_count", 0)
             tokens_output = data.get("eval_count", 0)
+
+            # Log generation to Langfuse (auto-attaches to current span/trace)
+            try:
+                with start_generation(
+                    name=f"ollama-{model}",
+                    model=model,
+                    input=messages,
+                    model_parameters={"temperature": temperature},
+                    metadata={"attempt": attempt},
+                ) as gen:
+                    gen.update(
+                        output=content,
+                        usage_details={
+                            "input": tokens_input,
+                            "output": tokens_output,
+                        },
+                    )
+            except Exception:
+                logger.debug("Langfuse generation logging failed", exc_info=True)
 
             return LLMResponse(
                 content=content,

@@ -49,6 +49,7 @@ services:
     environment:
       - CLICKHOUSE_MIGRATION_URL=clickhouse://langfuse-clickhouse:9000
       - CLICKHOUSE_URL=http://langfuse-clickhouse:8123
+      - CLICKHOUSE_CLUSTER_ENABLED=false
       - REDIS_HOST=langfuse-redis
       - REDIS_PORT=6379
       - LANGFUSE_S3_MEDIA_UPLOAD_BUCKET=langfuse
@@ -68,6 +69,7 @@ services:
     environment:
       - CLICKHOUSE_MIGRATION_URL=clickhouse://langfuse-clickhouse:9000
       - CLICKHOUSE_URL=http://langfuse-clickhouse:8123
+      - CLICKHOUSE_CLUSTER_ENABLED=false
       - REDIS_HOST=langfuse-redis
       - REDIS_PORT=6379
       - LANGFUSE_S3_MEDIA_UPLOAD_BUCKET=langfuse

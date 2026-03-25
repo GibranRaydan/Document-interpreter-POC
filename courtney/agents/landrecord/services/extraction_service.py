@@ -45,7 +45,7 @@ async def extract_structured_data(
 
     messages = [
         {"role": "system", "content": system_prompt},
-        {"role": "user", "content": raw_text[:6000]},
+        {"role": "user", "content": raw_text},
     ]
 
     response: LLMResponse = await call_llm(client, agent.model, messages)

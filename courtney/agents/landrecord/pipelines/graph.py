@@ -13,6 +13,7 @@ from langgraph.graph import StateGraph, END
 
 from courtney.models import Agent, Document, DocumentProcess, ProcessLog, StepStatus
 from courtney.agents.landrecord.schemas.extraction import LandRecordExtraction
+from courtney.agents.abstract.langfuse_client import get_langfuse, start_trace, start_span
 from courtney.agents.landrecord.services import (
     ocr_service,
     classifier_service,
@@ -123,31 +124,35 @@ async def ocr_node(state: LandRecordPipelineState) -> LandRecordPipelineState:
     await _set_step(state["process_pk"], "ocr")
     await _log(state["process_pk"], "ocr", StepStatus.STARTED, agent)
 
-    start = time.monotonic()
-    try:
-        result = await ocr_service.extract_text(state["file_path"], state["_client"], agent)
-    except Exception as exc:
-        logger.exception("OCR failed for process %d", state["process_pk"])
-        await _log(state["process_pk"], "ocr", StepStatus.FAILED, agent, detail=str(exc))
-        await _set_step(state["process_pk"], "ocr_failed")
-        return {
-            **state,
-            "failed_step": "ocr",
-            "error_message": str(exc),
-            "last_event": _event("ocr", "failed", agent.model, started_at, output=str(exc)),
-        }
+    with start_span(name="ocr", metadata={"model": agent.model}) as span:
+        start = time.monotonic()
+        try:
+            result = await ocr_service.extract_text(state["file_path"], state["_client"], agent)
+        except Exception as exc:
+            logger.exception("OCR failed for process %d", state["process_pk"])
+            await _log(state["process_pk"], "ocr", StepStatus.FAILED, agent, detail=str(exc))
+            await _set_step(state["process_pk"], "ocr_failed")
+            span.update(level="ERROR", status_message=str(exc))
+            return {
+                **state,
+                "failed_step": "ocr",
+                "error_message": str(exc),
+                "last_event": _event("ocr", "failed", agent.model, started_at, output=str(exc)),
+            }
 
-    duration = int((time.monotonic() - start) * 1000)
-    await _log(
-        state["process_pk"], "ocr", StepStatus.COMPLETED, agent,
-        detail=result.raw_text,
-        duration_ms=duration,
-        tokens_input=result.tokens_input,
-        tokens_output=result.tokens_output,
-    )
-    await DocumentProcess.objects.filter(pk=state["process_pk"]).aupdate(
-        raw_text=result.raw_text, step="ocr_complete"
-    )
+        duration = int((time.monotonic() - start) * 1000)
+        await _log(
+            state["process_pk"], "ocr", StepStatus.COMPLETED, agent,
+            detail=result.raw_text,
+            duration_ms=duration,
+            tokens_input=result.tokens_input,
+            tokens_output=result.tokens_output,
+        )
+        await DocumentProcess.objects.filter(pk=state["process_pk"]).aupdate(
+            raw_text=result.raw_text, step="ocr_complete"
+        )
+        span.update(output={"raw_text_length": len(result.raw_text)})
+
     return {
         **state,
         "raw_text": result.raw_text,
@@ -167,28 +172,32 @@ async def classify_node(state: LandRecordPipelineState) -> LandRecordPipelineSta
     await _set_step(state["process_pk"], "classify")
     await _log(state["process_pk"], "classify", StepStatus.STARTED, agent)
 
-    start = time.monotonic()
-    try:
-        result = await classifier_service.classify_document(state["raw_text"], state["_client"], agent)
-    except Exception as exc:
-        logger.exception("Classification failed for process %d", state["process_pk"])
-        await _log(state["process_pk"], "classify", StepStatus.FAILED, agent, detail=str(exc))
-        await _set_step(state["process_pk"], "classify_failed")
-        return {
-            **state,
-            "failed_step": "classify",
-            "error_message": str(exc),
-            "last_event": _event("classify", "failed", agent.model, started_at, output=str(exc)),
-        }
+    with start_span(name="classify", metadata={"model": agent.model}) as span:
+        start = time.monotonic()
+        try:
+            result = await classifier_service.classify_document(state["raw_text"], state["_client"], agent)
+        except Exception as exc:
+            logger.exception("Classification failed for process %d", state["process_pk"])
+            await _log(state["process_pk"], "classify", StepStatus.FAILED, agent, detail=str(exc))
+            await _set_step(state["process_pk"], "classify_failed")
+            span.update(level="ERROR", status_message=str(exc))
+            return {
+                **state,
+                "failed_step": "classify",
+                "error_message": str(exc),
+                "last_event": _event("classify", "failed", agent.model, started_at, output=str(exc)),
+            }
 
-    duration = int((time.monotonic() - start) * 1000)
-    await _log(
-        state["process_pk"], "classify", StepStatus.COMPLETED, agent,
-        duration_ms=duration,
-        tokens_input=result.tokens_input,
-        tokens_output=result.tokens_output,
-    )
-    await DocumentProcess.objects.filter(pk=state["process_pk"]).aupdate(step="classify_complete")
+        duration = int((time.monotonic() - start) * 1000)
+        await _log(
+            state["process_pk"], "classify", StepStatus.COMPLETED, agent,
+            duration_ms=duration,
+            tokens_input=result.tokens_input,
+            tokens_output=result.tokens_output,
+        )
+        await DocumentProcess.objects.filter(pk=state["process_pk"]).aupdate(step="classify_complete")
+        span.update(output={"document_type": result.document_type})
+
     return {
         **state,
         "document_type": result.document_type,
@@ -208,32 +217,36 @@ async def extract_node(state: LandRecordPipelineState) -> LandRecordPipelineStat
     await _set_step(state["process_pk"], "extract")
     await _log(state["process_pk"], "extract", StepStatus.STARTED, agent)
 
-    start = time.monotonic()
-    try:
-        result = await extraction_service.extract_structured_data(
-            state["raw_text"], state["_client"], agent
-        )
-    except Exception as exc:
-        logger.exception("Extraction failed for process %d", state["process_pk"])
-        await _log(state["process_pk"], "extract", StepStatus.FAILED, agent, detail=str(exc))
-        await _set_step(state["process_pk"], "extract_failed")
-        return {
-            **state,
-            "failed_step": "extract",
-            "error_message": str(exc),
-            "last_event": _event("extract", "failed", agent.model, started_at, output=str(exc)),
-        }
+    with start_span(name="extract", metadata={"model": agent.model}) as span:
+        start = time.monotonic()
+        try:
+            result = await extraction_service.extract_structured_data(
+                state["raw_text"], state["_client"], agent
+            )
+        except Exception as exc:
+            logger.exception("Extraction failed for process %d", state["process_pk"])
+            await _log(state["process_pk"], "extract", StepStatus.FAILED, agent, detail=str(exc))
+            await _set_step(state["process_pk"], "extract_failed")
+            span.update(level="ERROR", status_message=str(exc))
+            return {
+                **state,
+                "failed_step": "extract",
+                "error_message": str(exc),
+                "last_event": _event("extract", "failed", agent.model, started_at, output=str(exc)),
+            }
 
-    duration = int((time.monotonic() - start) * 1000)
-    extraction_dict = result.extraction.model_dump(mode="json")
-    await _log(
-        state["process_pk"], "extract", StepStatus.COMPLETED, agent,
-        detail=result.extraction.model_dump_json(),
-        duration_ms=duration,
-        tokens_input=result.tokens_input,
-        tokens_output=result.tokens_output,
-    )
-    await _set_step(state["process_pk"], "extract_complete")
+        duration = int((time.monotonic() - start) * 1000)
+        extraction_dict = result.extraction.model_dump(mode="json")
+        await _log(
+            state["process_pk"], "extract", StepStatus.COMPLETED, agent,
+            detail=result.extraction.model_dump_json(),
+            duration_ms=duration,
+            tokens_input=result.tokens_input,
+            tokens_output=result.tokens_output,
+        )
+        await _set_step(state["process_pk"], "extract_complete")
+        span.update(output={"fields_extracted": len(extraction_dict)})
+
     return {
         **state,
         "extraction": extraction_dict,
@@ -253,10 +266,12 @@ async def validate_node(state: LandRecordPipelineState) -> LandRecordPipelineSta
     await _set_step(state["process_pk"], "validate")
     await _log(state["process_pk"], "validate", StepStatus.STARTED, agent)
 
-    start = time.monotonic()
-    extraction = LandRecordExtraction.model_validate(state["extraction"] or {})
-    result = validation_service.validate(extraction)
-    duration = int((time.monotonic() - start) * 1000)
+    with start_span(name="validate", metadata={"model": agent.model}) as span:
+        start = time.monotonic()
+        extraction = LandRecordExtraction.model_validate(state["extraction"] or {})
+        result = validation_service.validate(extraction)
+        duration = int((time.monotonic() - start) * 1000)
+        span.update(output={"is_valid": result.is_valid, "errors": result.errors, "confidence": result.confidence})
 
     await _log(
         state["process_pk"], "validate", StepStatus.COMPLETED, agent,
@@ -366,7 +381,13 @@ async def run_pipeline(document_pk: int) -> LandRecordPipelineState:
     """
     async with httpx.AsyncClient() as client:
         initial_state = await _make_initial_state(document_pk, client)
-        return await pipeline.ainvoke(initial_state)
+        with start_trace(
+            name="land-record-pipeline",
+            metadata={"document_pk": document_pk, "process_pk": initial_state["process_pk"]},
+        ):
+            result = await pipeline.ainvoke(initial_state)
+        get_langfuse().flush()
+        return result
 
 
 async def run_pipeline_stream(document_pk: int):
@@ -376,8 +397,13 @@ async def run_pipeline_stream(document_pk: int):
     """
     async with httpx.AsyncClient() as client:
         initial_state = await _make_initial_state(document_pk, client)
-        async for chunk in pipeline.astream(initial_state):
-            for _node_name, state_diff in chunk.items():
-                event = state_diff.get("last_event")
-                if event:
-                    yield event
+        with start_trace(
+            name="land-record-pipeline",
+            metadata={"document_pk": document_pk, "process_pk": initial_state["process_pk"]},
+        ):
+            async for chunk in pipeline.astream(initial_state):
+                for _node_name, state_diff in chunk.items():
+                    event = state_diff.get("last_event")
+                    if event:
+                        yield event
+        get_langfuse().flush()
