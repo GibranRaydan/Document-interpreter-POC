@@ -11,6 +11,12 @@ services:
       - ./data/db-init:/docker-entrypoint-initdb.d   # creates langfuse DB on first boot
     ports:
       - 5432:5432
+  
+  tesseract:
+    image: hertzg/tesseract-server:latest
+    restart: no
+    ports:
+      - 3001:8884
 
   # ── Django API ───────────────────────────────────────────────────────────────
   # backend:

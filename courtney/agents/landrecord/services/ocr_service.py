@@ -13,6 +13,10 @@ from courtney.models import Agent
 
 logger = logging.getLogger(__name__)
 
+WITH_TESSERACT = True
+
+TESSERACT_URL = "http://localhost:3001"
+
 
 @dataclass
 class OCRResult:
@@ -32,13 +36,56 @@ def _pdf_to_base64_images(pdf_bytes: bytes) -> list[str]:
     return images_b64
 
 
+def _pdf_to_page_bytes(pdf_bytes: bytes) -> list[bytes]:
+    """Convert a PDF to a list of PNG bytes (one per page)."""
+    pages = convert_from_bytes(pdf_bytes, dpi=300)
+    result = []
+    for page in pages:
+        buf = io.BytesIO()
+        page.save(buf, format="PNG")
+        result.append(buf.getvalue())
+    return result
+
+
+async def _tesseract_extract(file_path: str, client: httpx.AsyncClient) -> str:
+    """Send image/PDF pages to the Tesseract HTTP service and return extracted text."""
+    with open(file_path, "rb") as f:
+        raw = f.read()
+
+    if file_path.lower().endswith(".pdf"):
+        pages_bytes = _pdf_to_page_bytes(raw)
+    else:
+        pages_bytes = [raw]
+
+    texts: list[str] = []
+    for page_bytes in pages_bytes:
+        response = await client.post(
+            f"{TESSERACT_URL}/tesseract",
+            files={"file": ("page.png", page_bytes, "image/png")},
+            data={"options": "{}"},
+            timeout=60.0,
+        )
+        response.raise_for_status()
+        data = response.json()
+        texts.append(data.get("data", {}).get("stdout", ""))
+
+    return "\n".join(texts)
+
+
 async def extract_text(file_path: str, client: httpx.AsyncClient, agent: Agent) -> OCRResult:
     """
-    Reads the file at `file_path`, encodes it as base64, and sends it to the
-    vision model defined in `agent`.  Supports images and PDFs (multi-page).
+    Reads the file at `file_path` and extracts text.
+
+    If WITH_TESSERACT is True, sends pages to the Tesseract Docker service (no LLM tokens used).
+    Otherwise, encodes as base64 and sends to the vision LLM defined in `agent`.
 
     Returns an OCRResult with the extracted text and token counts.
     """
+    if WITH_TESSERACT:
+        logger.info("OCR via Tesseract service for %s", file_path)
+        raw_text = await _tesseract_extract(file_path, client)
+        return OCRResult(raw_text=raw_text, tokens_input=0, tokens_output=0)
+
     with open(file_path, "rb") as f:
         raw = f.read()
 
