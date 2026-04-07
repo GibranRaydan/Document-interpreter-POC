@@ -35,6 +35,7 @@ class DocumentProcess(models.Model):
     updated = models.DateTimeField(auto_now=True)
 
     class Meta:
+        ordering = ["id"]
         constraints = [
             models.UniqueConstraint(
                 fields=["document"],
@@ -76,6 +77,9 @@ class ProcessLog(models.Model):
     tokens_input = models.PositiveIntegerField(null=True, blank=True)
     tokens_output = models.PositiveIntegerField(null=True, blank=True)
     created = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["id"]
 
     def __str__(self):
         return f"{self.step} [{self.status}] — process {self.process_id}"

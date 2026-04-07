@@ -1,7 +1,10 @@
+import os
 import uuid
 
 from django.utils.text import slugify
 from rest_framework import serializers
+
+ALLOWED_EXTENSIONS = {".pdf", ".tiff", ".tif", ".png", ".jpg", ".jpeg"}
 
 from .models import Agent, Document, DocumentProcess, LandRecord, ProcessLog
 
@@ -54,6 +57,14 @@ class DocumentUploadSerializer(serializers.ModelSerializer):
         model = Document
         fields = ["slug", "file", "name", "type", "created"]
         read_only_fields = ["slug", "created"]
+
+    def validate_file(self, value):
+        ext = os.path.splitext(value.name)[1].lower()
+        if ext not in ALLOWED_EXTENSIONS:
+            raise serializers.ValidationError(
+                f"Unsupported file type '{ext}'. Allowed: {', '.join(sorted(ALLOWED_EXTENSIONS))}"
+            )
+        return value
 
     def create(self, validated_data):
         validated_data["slug"] = slugify(str(uuid.uuid4()))[:50]

@@ -22,6 +22,8 @@ class LLMModels(models.TextChoices):
 class PartyRole(models.TextChoices):
     GRANTOR = "GRANTOR", "Grantor"
     GRANTEE = "GRANTEE", "Grantee"
+    TRUSTEE = "TRUSTEE", "Trustee"
+    LENDER = "LENDER", "Lender"
 
 
 class PartyType(models.TextChoices):

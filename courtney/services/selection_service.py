@@ -1,8 +1,23 @@
+import re
+from decimal import Decimal, InvalidOperation
+
 from django.db import transaction
 
 from courtney.agents.landrecord.schemas.extraction import LandRecordExtraction
 from courtney.models import DocumentProcess, LandRecord, Party, Reference
 from courtney.agents.landrecord.pipelines.graph import _parse_date
+
+
+def _parse_amount(value: str | None) -> Decimal | None:
+    if not value:
+        return None
+    cleaned = re.sub(r"[^\d.]", "", value)
+    if not cleaned:
+        return None
+    try:
+        return Decimal(cleaned)
+    except InvalidOperation:
+        return None
 
 
 def select_process(process: DocumentProcess) -> LandRecord:
@@ -31,7 +46,7 @@ def select_process(process: DocumentProcess) -> LandRecord:
                 "page_range": extraction.page_range,
                 "property_address": extraction.property_address,
                 "legal_description": extraction.legal_description,
-                "consideration_amount": extraction.consideration_amount,
+                "consideration_amount": _parse_amount(extraction.consideration_amount),
                 "execution_date": _parse_date(extraction.execution_date),
                 "county": extraction.county,
                 "state": extraction.state,

@@ -31,13 +31,13 @@ def validate(extraction: LandRecordExtraction) -> ValidationResult:
             f"execution_date '{extraction.execution_date}' must be in YYYY-MM-DD format."
         )
 
-    if extraction.consideration_amount is not None and extraction.consideration_amount < 0:
-        errors.append("consideration_amount must be zero or positive.")
+    if extraction.consideration_amount is not None and extraction.consideration_amount.strip() == "":
+        errors.append("consideration_amount must not be empty.")
 
     for i, party in enumerate(extraction.parties):
         if not party.name and not party.givenname:
             errors.append(f"Party[{i}] must have at least a name or givenname.")
-        if party.role and party.role not in ("GRANTOR", "GRANTEE"):
+        if party.role and party.role not in ("GRANTOR", "GRANTEE", "TRUSTEE", "LENDER"):
             errors.append(f"Party[{i}] role '{party.role}' is invalid (must be GRANTOR or GRANTEE).")
 
     return ValidationResult(

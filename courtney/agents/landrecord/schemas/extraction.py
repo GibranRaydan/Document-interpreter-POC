@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from decimal import Decimal
 from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
@@ -9,7 +8,7 @@ from pydantic import BaseModel, Field
 class PartyExtraction(BaseModel):
     name: Optional[str] = Field(None, description="Surname or full entity name.")
     givenname: Optional[str] = Field(None, description="Given name for individuals.")
-    role: Optional[Literal["GRANTOR", "GRANTEE"]] = Field(
+    role: Optional[Literal["GRANTOR", "GRANTEE", "TRUSTEE", "LENDER"]] = Field(
         None, description="Role of the party in the document."
     )
     type: Optional[Literal["F", "I"]] = Field(
@@ -34,7 +33,7 @@ class LandRecordExtraction(BaseModel):
     legal_description: Optional[str] = Field(
         None, description="Full legal description of the property."
     )
-    consideration_amount: Optional[Decimal] = Field(
+    consideration_amount: Optional[str] = Field(
         None, description="Monetary consideration amount stated in the document."
     )
     execution_date: Optional[str] = Field(

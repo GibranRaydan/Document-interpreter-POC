@@ -7,6 +7,7 @@ from dataclasses import dataclass
 
 import httpx
 from pdf2image import convert_from_bytes
+from PIL import Image
 
 from courtney.agents.abstract.base_llm import call_llm, LLMResponse
 from courtney.models import Agent
@@ -23,6 +24,23 @@ class OCRResult:
     raw_text: str
     tokens_input: int
     tokens_output: int
+
+
+def _tiff_to_page_bytes(tiff_bytes: bytes) -> list[bytes]:
+    """Convert a multi-page TIFF to a list of PNG bytes (one per page)."""
+    img = Image.open(io.BytesIO(tiff_bytes))
+    result = []
+    for i in range(getattr(img, "n_frames", 1)):
+        img.seek(i)
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        result.append(buf.getvalue())
+    return result
+
+
+def _tiff_to_base64_images(tiff_bytes: bytes) -> list[str]:
+    """Convert a multi-page TIFF to a list of base64-encoded PNG images."""
+    return [base64.b64encode(page).decode("utf-8") for page in _tiff_to_page_bytes(tiff_bytes)]
 
 
 def _pdf_to_base64_images(pdf_bytes: bytes) -> list[str]:
@@ -54,6 +72,8 @@ async def _tesseract_extract(file_path: str, client: httpx.AsyncClient) -> str:
 
     if file_path.lower().endswith(".pdf"):
         pages_bytes = _pdf_to_page_bytes(raw)
+    elif file_path.lower().endswith((".tiff", ".tif")):
+        pages_bytes = _tiff_to_page_bytes(raw)
     else:
         pages_bytes = [raw]
 
@@ -91,6 +111,8 @@ async def extract_text(file_path: str, client: httpx.AsyncClient, agent: Agent) 
 
     if file_path.lower().endswith(".pdf"):
         images_b64 = _pdf_to_base64_images(raw)
+    elif file_path.lower().endswith((".tiff", ".tif")):
+        images_b64 = _tiff_to_base64_images(raw)
     else:
         images_b64 = [base64.b64encode(raw).decode("utf-8")]
 
