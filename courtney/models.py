@@ -43,6 +43,8 @@ class DocumentProcess(models.Model):
                 name="unique_selected_process_per_document",
             )
         ]
+        verbose_name = "Document Process"
+        verbose_name_plural = "Document Processes"
 
     def __str__(self):
         return f"Process v{self.version} [{self.step}] — {self.slug}"
