@@ -29,3 +29,7 @@ media/  # User-uploaded files
 staticfiles/  # Collected static files (if using collectstatic)
 media/  # User-uploaded files (if not using a separate media server)
 data/  # Any data files that should not be versioned
+
+data
+media
+staticfiles

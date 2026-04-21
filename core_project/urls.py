@@ -9,6 +9,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     # path('api/', include('api.urls')),
     path('api/', include('courtney.urls')),
+    path('api_async/', include('courtney_async.urls')),
 ]
 
 if settings.DEBUG:

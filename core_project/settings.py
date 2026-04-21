@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     'django_json_widget',
     # 'api',
     'courtney',
+    'courtney_async',
 ]
 
 MIDDLEWARE = [
@@ -62,6 +63,12 @@ MIDDLEWARE = [
 ]
 
 CORS_ALLOW_ALL_ORIGINS = True
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost",
+    "http://localhost:8000",
+    "http://127.0.0.1",
+    "http://127.0.0.1:8000",
+]
 
 ROOT_URLCONF = 'core_project.urls'
 
@@ -93,7 +100,7 @@ DATABASES = {
         "USER": env.str("POSTGRES_USER", "mydatabaseuser"),
         "PASSWORD": env.str("POSTGRES_PASSWORD", "mypassword"),
         "HOST": env.str("DB_HOST", "127.0.0.1"),
-        "PORT": env.int("DB_PORT", 5432),
+        "PORT": env.int("DB_PORT", 5433),
     }
 }
 
@@ -154,3 +161,8 @@ OLLAMA_TIMEOUT = int(env("OLLAMA_TIMEOUT", "120"))
 LANGFUSE_SECRET_KEY = env("LANGFUSE_SECRET_KEY", "")
 LANGFUSE_PUBLIC_KEY = env("LANGFUSE_PUBLIC_KEY", "")
 LANGFUSE_BASE_URL = env("LANGFUSE_BASE_URL", "http://localhost:3000")
+
+# --- Temporal ---
+TEMPORAL_ADDRESS = env.str("TEMPORAL_ADDRESS", "localhost:7233")
+TEMPORAL_NAMESPACE = env.str("TEMPORAL_NAMESPACE", "default")
+TEMPORAL_TASK_QUEUE = env.str("TEMPORAL_TASK_QUEUE", "courtney-landrecord")

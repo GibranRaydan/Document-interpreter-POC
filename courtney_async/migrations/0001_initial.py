@@ -1,0 +1,184 @@
+import django.db.models.deletion
+from django.db import migrations, models
+
+
+class Migration(migrations.Migration):
+
+    initial = True
+
+    dependencies = []
+
+    operations = [
+        migrations.CreateModel(
+            name="Agent",
+            fields=[
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("name", models.CharField(max_length=100, unique=True)),
+                ("model", models.CharField(
+                    choices=[
+                        ("llama3.1", "Llama 3.1"),
+                        ("llama3.2-vision", "Llama 3.2 Vision"),
+                        ("minicpm-v", "MiniCPM v1"),
+                        ("gpt-oss", "GPT-OSS"),
+                        ("glm-ocr", "GLM-OCR"),
+                    ],
+                    max_length=50,
+                )),
+                ("system_prompt", models.TextField(blank=True, default="")),
+                ("created", models.DateTimeField(auto_now_add=True)),
+                ("updated", models.DateTimeField(auto_now=True)),
+            ],
+            options={"db_table": "courtney_async_agent"},
+        ),
+        migrations.CreateModel(
+            name="Document",
+            fields=[
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("file", models.FileField(upload_to="documents/%Y/%m/")),
+                ("slug", models.SlugField(unique=True)),
+                ("name", models.CharField(blank=True, max_length=255, null=True)),
+                ("type", models.CharField(
+                    choices=[("land_record", "Land Record")],
+                    default="land_record",
+                    max_length=50,
+                )),
+                ("created", models.DateTimeField(auto_now_add=True)),
+                ("updated", models.DateTimeField(auto_now=True)),
+            ],
+            options={"db_table": "courtney_async_document"},
+        ),
+        migrations.CreateModel(
+            name="DocumentProcess",
+            fields=[
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("slug", models.SlugField(unique=True)),
+                ("version", models.PositiveSmallIntegerField(default=1)),
+                ("step", models.CharField(blank=True, default="", max_length=50)),
+                ("raw_text", models.TextField(blank=True, default="")),
+                ("data", models.JSONField(blank=True, null=True)),
+                ("is_selected", models.BooleanField(default=False)),
+                ("created", models.DateTimeField(auto_now_add=True)),
+                ("updated", models.DateTimeField(auto_now=True)),
+                ("document", models.ForeignKey(
+                    on_delete=django.db.models.deletion.CASCADE,
+                    related_name="processes",
+                    to="courtney_async.document",
+                )),
+            ],
+            options={
+                "db_table": "courtney_async_documentprocess",
+                "ordering": ["id"],
+                "verbose_name": "Document Process",
+                "verbose_name_plural": "Document Processes",
+            },
+        ),
+        migrations.CreateModel(
+            name="LandRecord",
+            fields=[
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("book", models.CharField(blank=True, max_length=255, null=True)),
+                ("page", models.CharField(blank=True, max_length=255, null=True)),
+                ("document_type", models.CharField(blank=True, max_length=255, null=True)),
+                ("page_range", models.CharField(blank=True, max_length=255, null=True)),
+                ("property_address", models.CharField(blank=True, max_length=255, null=True)),
+                ("legal_description", models.TextField(blank=True, null=True)),
+                ("consideration_amount", models.DecimalField(blank=True, decimal_places=2, max_digits=14, null=True)),
+                ("execution_date", models.DateField(blank=True, null=True)),
+                ("county", models.CharField(blank=True, max_length=255, null=True)),
+                ("state", models.CharField(blank=True, max_length=255, null=True)),
+                ("created", models.DateTimeField(auto_now_add=True)),
+                ("updated", models.DateTimeField(auto_now=True)),
+                ("process", models.OneToOneField(
+                    on_delete=django.db.models.deletion.CASCADE,
+                    related_name="land_record",
+                    to="courtney_async.documentprocess",
+                )),
+            ],
+            options={"db_table": "courtney_async_landrecord"},
+        ),
+        migrations.CreateModel(
+            name="Party",
+            fields=[
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("name", models.CharField(blank=True, max_length=100, null=True)),
+                ("givenname", models.CharField(blank=True, max_length=100, null=True)),
+                ("role", models.CharField(
+                    blank=True,
+                    choices=[
+                        ("GRANTOR", "Grantor"),
+                        ("GRANTEE", "Grantee"),
+                        ("TRUSTEE", "Trustee"),
+                        ("LENDER", "Lender"),
+                    ],
+                    max_length=7,
+                    null=True,
+                )),
+                ("type", models.CharField(
+                    blank=True,
+                    choices=[("F", "Firm"), ("I", "Individual")],
+                    max_length=1,
+                    null=True,
+                )),
+                ("created", models.DateTimeField(auto_now_add=True)),
+                ("updated", models.DateTimeField(auto_now=True)),
+                ("land_record", models.ForeignKey(
+                    on_delete=django.db.models.deletion.CASCADE,
+                    related_name="parties",
+                    to="courtney_async.landrecord",
+                )),
+            ],
+            options={"db_table": "courtney_async_party"},
+        ),
+        migrations.CreateModel(
+            name="ProcessLog",
+            fields=[
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("step", models.CharField(max_length=50)),
+                ("status", models.CharField(
+                    choices=[("started", "Started"), ("completed", "Completed"), ("failed", "Failed")],
+                    max_length=20,
+                )),
+                ("detail", models.TextField(blank=True, default="")),
+                ("duration_ms", models.PositiveIntegerField(blank=True, null=True)),
+                ("tokens_input", models.PositiveIntegerField(blank=True, null=True)),
+                ("tokens_output", models.PositiveIntegerField(blank=True, null=True)),
+                ("created", models.DateTimeField(auto_now_add=True)),
+                ("agent", models.ForeignKey(
+                    blank=True, null=True,
+                    on_delete=django.db.models.deletion.SET_NULL,
+                    to="courtney_async.agent",
+                )),
+                ("process", models.ForeignKey(
+                    on_delete=django.db.models.deletion.CASCADE,
+                    related_name="logs",
+                    to="courtney_async.documentprocess",
+                )),
+            ],
+            options={"db_table": "courtney_async_processlog", "ordering": ["id"]},
+        ),
+        migrations.CreateModel(
+            name="Reference",
+            fields=[
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("book", models.CharField(blank=True, max_length=255, null=True)),
+                ("page", models.CharField(blank=True, max_length=255, null=True)),
+                ("document_type", models.CharField(blank=True, max_length=255, null=True)),
+                ("created", models.DateTimeField(auto_now_add=True)),
+                ("updated", models.DateTimeField(auto_now=True)),
+                ("land_record", models.ForeignKey(
+                    on_delete=django.db.models.deletion.CASCADE,
+                    related_name="references",
+                    to="courtney_async.landrecord",
+                )),
+            ],
+            options={"db_table": "courtney_async_reference"},
+        ),
+        migrations.AddConstraint(
+            model_name="documentprocess",
+            constraint=models.UniqueConstraint(
+                condition=models.Q(("is_selected", True)),
+                fields=("document",),
+                name="courtney_async_unique_selected_process_per_document",
+            ),
+        ),
+    ]
