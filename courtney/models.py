@@ -1,133 +1,48 @@
+import uuid
+
 from django.db import models
+from django.core.validators import FileExtensionValidator
 
-from .enums import *
 
-
-# ---------------------------------------------------------------------------
-# Document — file upload entry point
-# ---------------------------------------------------------------------------
-
-class Document(models.Model):
-    file = models.FileField(upload_to="documents/%Y/%m/")
-    slug = models.SlugField(unique=True, max_length=50)
-    name = models.CharField(max_length=255, blank=True, null=True)
-    type = models.CharField(max_length=50, choices=DocumentType.choices, default=DocumentType.LAND_RECORD)
+class Book(models.Model):
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 
+    class Meta:
+        ordering = ["-id"]
+
     def __str__(self):
-        return f"{self.get_type_display()} — {self.name or self.slug}"
+        return f"{self.uuid}"
 
 
-# ---------------------------------------------------------------------------
-# DocumentProcess — one pipeline run per Document
-# ---------------------------------------------------------------------------
+class Record(models.Model):
+    book = models.ForeignKey(Book, related_name="records", on_delete=models.CASCADE, null=True, blank=True)
+    data = models.JSONField(blank=True, default=dict)
+    trace_id = models.CharField(max_length=255, null=True, blank=True)
 
-class DocumentProcess(models.Model):
-    document = models.ForeignKey(Document, on_delete=models.CASCADE, related_name="processes")
-    slug = models.SlugField(unique=True)
-    version = models.PositiveSmallIntegerField(default=1)
-    step = models.CharField(max_length=50, blank=True, default="")
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-id"]
+
+    def __str__(self):
+        return f"{self.uuid}"
+
+
+class Page(models.Model):
+    record = models.ForeignKey(Record, related_name="pages", on_delete=models.CASCADE)
+    file = models.FileField(validators=[FileExtensionValidator(allowed_extensions=["pdf", "tiff", "tif", "png", "jpg", "jpeg"])])
     raw_text = models.TextField(blank=True, default="")
-    data = models.JSONField(null=True, blank=True)
-    is_selected = models.BooleanField(default=False)
+
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ["id"]
-        constraints = [
-            models.UniqueConstraint(
-                fields=["document"],
-                condition=models.Q(is_selected=True),
-                name="unique_selected_process_per_document",
-            )
-        ]
-        verbose_name = "Document Process"
-        verbose_name_plural = "Document Processes"
 
     def __str__(self):
-        return f"Process v{self.version} [{self.step}] — {self.slug}"
-
-
-# ---------------------------------------------------------------------------
-# Agent — LLM agent configuration
-# ---------------------------------------------------------------------------
-
-class Agent(models.Model):
-    name = models.CharField(max_length=100, unique=True)
-    model = models.CharField(max_length=50, choices=LLMModels.choices)
-    system_prompt = models.TextField(blank=True, default="")
-    created = models.DateTimeField(auto_now_add=True)
-    updated = models.DateTimeField(auto_now=True)
-
-    def __str__(self):
-        return self.name
-
-
-# ---------------------------------------------------------------------------
-# ProcessLog — append-only audit log per pipeline step
-# ---------------------------------------------------------------------------
-
-class ProcessLog(models.Model):
-    process = models.ForeignKey(DocumentProcess, on_delete=models.CASCADE, related_name="logs")
-    step = models.CharField(max_length=50)
-    status = models.CharField(max_length=20, choices=StepStatus.choices)
-    agent = models.ForeignKey(Agent, on_delete=models.SET_NULL, null=True, blank=True)
-    detail = models.TextField(blank=True, default="")
-    duration_ms = models.PositiveIntegerField(null=True, blank=True)
-    tokens_input = models.PositiveIntegerField(null=True, blank=True)
-    tokens_output = models.PositiveIntegerField(null=True, blank=True)
-    created = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        ordering = ["id"]
-
-    def __str__(self):
-        return f"{self.step} [{self.status}] — process {self.process_id}"
-
-
-# ---------------------------------------------------------------------------
-# LandRecord — relational result, created when a process is selected
-# ---------------------------------------------------------------------------
-
-class LandRecord(models.Model):
-    process = models.OneToOneField(DocumentProcess, on_delete=models.CASCADE, related_name="land_record")
-    book = models.CharField(max_length=255, blank=True, null=True)
-    page = models.CharField(max_length=255, blank=True, null=True)
-    document_type = models.CharField(max_length=255, blank=True, null=True)
-    page_range = models.CharField(max_length=255, blank=True, null=True)
-    property_address = models.CharField(max_length=255, blank=True, null=True)
-    legal_description = models.TextField(blank=True, null=True)
-    consideration_amount = models.DecimalField(max_digits=14, decimal_places=2, blank=True, null=True)
-    execution_date = models.DateField(blank=True, null=True)
-    county = models.CharField(max_length=255, blank=True, null=True)
-    state = models.CharField(max_length=255, blank=True, null=True)
-    created = models.DateTimeField(auto_now_add=True)
-    updated = models.DateTimeField(auto_now=True)
-
-    def __str__(self):
-        return f"LandRecord — {self.property_address or self.pk}"
-
-
-# ---------------------------------------------------------------------------
-# Party and Reference — children of LandRecord for relational queries
-# ---------------------------------------------------------------------------
-
-class Party(models.Model):
-    land_record = models.ForeignKey(LandRecord, on_delete=models.CASCADE, related_name="parties")
-    name = models.CharField(max_length=100, blank=True, null=True)
-    givenname = models.CharField(max_length=100, blank=True, null=True)
-    role = models.CharField(max_length=7, choices=PartyRole.choices, blank=True, null=True)
-    type = models.CharField(max_length=1, choices=PartyType.choices, blank=True, null=True)
-    created = models.DateTimeField(auto_now_add=True)
-    updated = models.DateTimeField(auto_now=True)
-
-
-class Reference(models.Model):
-    land_record = models.ForeignKey(LandRecord, on_delete=models.CASCADE, related_name="references")
-    book = models.CharField(max_length=255, blank=True, null=True)
-    page = models.CharField(max_length=255, blank=True, null=True)
-    document_type = models.CharField(max_length=255, blank=True, null=True)
-    created = models.DateTimeField(auto_now_add=True)
-    updated = models.DateTimeField(auto_now=True)
+        return f"{self.uuid}"

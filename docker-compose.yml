@@ -5,39 +5,19 @@ services:
     image: postgres:17.4-alpine
     restart: no
     container_name: courtney-db
-    env_file: ./core_project/.env
+    env_file: ./core/.env
     volumes:
       - ./data/db:/var/lib/postgresql/data
-      - ./data/db-init:/docker-entrypoint-initdb.d   # creates langfuse DB on first boot
+      - ./scripts/db-init:/docker-entrypoint-initdb.d   # creates langfuse DB on first boot
     ports:
       - 5433:5432
-  
+
+  # ── OCR Server ─────────────────────────────────────────────────────────────
   tesseract:
     image: hertzg/tesseract-server:latest
     restart: no
     ports:
       - 3001:8884
-
-  # ── Django API ───────────────────────────────────────────────────────────────
-  # backend:
-  #   image: courtney-api
-  #   build:
-  #     context: .
-  #     dockerfile: dockerfile
-  #   restart: no
-  #   container_name: courtney-api
-  #   env_file: ./core_project/.env
-  #   # command:  python manage.py runserver 0.0.0.0:8000
-  #   command: uvicorn core_project.asgi:application --reload --host 0.0.0.0 --port 8000
-  #   # --workers 4 --timeout-keep-alive 300 # Command production
-  #   volumes:
-  #     - ./:/srv/www/api
-  #   ports:
-  #     - 8000:8000
-  #   extra_hosts:
-  #     - "host.docker.internal:host-gateway"
-  #   depends_on:
-  #     - db
 
   # ── Langfuse Observability ───────────────────────────────────────────────────
   langfuse-web:
@@ -51,7 +31,7 @@ services:
       - langfuse-minio
     ports:
       - "3000:3000"
-    env_file: ./core_project/.langfuse.env
+    env_file: ./.env
     environment:
       - CLICKHOUSE_MIGRATION_URL=clickhouse://langfuse-clickhouse:9000
       - CLICKHOUSE_URL=http://langfuse-clickhouse:8123
@@ -71,7 +51,7 @@ services:
       - langfuse-redis
       - langfuse-clickhouse
       - langfuse-minio
-    env_file: ./core_project/.langfuse.env
+    env_file: ./.env
     environment:
       - CLICKHOUSE_MIGRATION_URL=clickhouse://langfuse-clickhouse:9000
       - CLICKHOUSE_URL=http://langfuse-clickhouse:8123

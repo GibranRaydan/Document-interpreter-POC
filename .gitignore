@@ -33,3 +33,5 @@ data/  # Any data files that should not be versioned
 data
 media
 staticfiles
+
+.claude
