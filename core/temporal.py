@@ -41,8 +41,20 @@ def temporal_ocr_task_queue() -> str:
     return getattr(settings, "TEMPORAL_OCR_TASK_QUEUE", "courtney-landrecord-ocr")
 
 
+def temporal_book_task_queue() -> str:
+    return getattr(settings, "TEMPORAL_BOOK_TASK_QUEUE", "courtney-book")
+
+
 def ocr_max_concurrent() -> int:
     return getattr(settings, "OCR_MAX_CONCURRENT_ACTIVITIES", 3)
+
+
+def book_max_concurrent_records() -> int:
+    return getattr(settings, "BOOK_MAX_CONCURRENT_RECORDS", 2)
+
+
+def book_max_concurrent_activities() -> int:
+    return getattr(settings, "BOOK_MAX_CONCURRENT_ACTIVITIES", 4)
 
 
 DEFAULT_RETRY_POLICY = RetryPolicy(

@@ -31,11 +31,13 @@ def start_trace(name: str, **kwargs) -> str:
     """Creates a Langfuse trace and returns its ID. Safe to call — never raises."""
     trace_id = uuid.uuid4().hex
     try:
-        get_langfuse().trace(
-            id=trace_id,
+        with get_langfuse().start_as_current_observation(
             name=name,
-            **kwargs
-        )
+            as_type="span",
+            trace_context={"trace_id": trace_id},
+            **kwargs,
+        ):
+            pass
     except Exception:
         logger.error("Langfuse trace creation failed", exc_info=True)
     return trace_id

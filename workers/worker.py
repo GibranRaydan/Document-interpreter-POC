@@ -8,7 +8,9 @@ from core.temporal import (
     temporal_namespace,
     temporal_task_queue,
     temporal_ocr_task_queue,
+    temporal_book_task_queue,
     ocr_max_concurrent,
+    book_max_concurrent_activities,
 )
 
 from workflows.landrecord.workflow import LandRecordWorkflow, PageWorkflow
@@ -20,9 +22,17 @@ from workflows.landrecord.activities import (
     extract_activity,
     persist_record_activity,
 )
+from workflows.book.workflow import BookWorkflow
+from workflows.book.activities import (
+    scan_book_activity,
+    mark_book_processing_activity,
+    create_or_resume_record_activity,
+    mark_record_failed_activity,
+    finalize_book_activity,
+)
 
 
-async def build_workers() -> tuple[Worker, Worker]:
+async def build_workers() -> tuple[Worker, Worker, Worker]:
     client = await Client.connect(temporal_address(), namespace=temporal_namespace())
 
     orchestration = Worker(
@@ -48,4 +58,18 @@ async def build_workers() -> tuple[Worker, Worker]:
         max_concurrent_activities=ocr_max_concurrent(),
     )
 
-    return orchestration, ocr
+    book = Worker(
+        client,
+        task_queue=temporal_book_task_queue(),
+        workflows=[BookWorkflow],
+        activities=[
+            scan_book_activity,
+            mark_book_processing_activity,
+            create_or_resume_record_activity,
+            mark_record_failed_activity,
+            finalize_book_activity,
+        ],
+        max_concurrent_activities=book_max_concurrent_activities(),
+    )
+
+    return orchestration, ocr, book

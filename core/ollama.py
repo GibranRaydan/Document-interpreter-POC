@@ -33,7 +33,10 @@ async def call_llm(
         "model": model,
         "messages": messages,
         "stream": False,
-        "options": {"temperature": temperature},
+        "options": {
+            "temperature": temperature,
+            "num_ctx": settings.OLLAMA_NUM_CTX,
+        },
     }
 
     last_exc: Exception | None = None
@@ -43,7 +46,7 @@ async def call_llm(
                 name=f"ollama-{model}",
                 model=model,
                 input=messages,
-                model_parameters={"temperature": temperature},
+                model_parameters={"temperature": temperature, "num_ctx": settings.OLLAMA_NUM_CTX},
                 metadata={"attempt": attempt},
             ) as gen:
                 response = await client.post(
